@@ -1,0 +1,22 @@
+# 신규 — 26.10.13 _ YSH _ VILS(차량 PC 고스트): morai_interface.gt.param.yaml 위에 덧씌운다 (launch overlay_param_file)
+#   차량 PC(MORAI)가 자기 GNSS 와 오프셋으로 MORAI Ego 를 고스트로 옮기고, 이 PC 는 그 Ego 를 측위로 받는다.
+#   실차(katech_ioniq CAN)가 Autoware 차량이다. 브리지는 /localization/kinematic_state·map→base_link TF·측위 초기화·
+#   MORAI 객체(TrackedObjects)를 내고, 명령·기어·제어 모드·텔레포트·등화·control_mode_request 는 내지도 보내지도 않는다
+#   (Ego 상태는 /morai/ego/*). e2e_simulator vils:=true vils_pose_source:=morai 가 고른다.
+/**:
+  ros__parameters:
+    ego_mode: "localize"
+    # 측위 진단(ground_truth) 문턱. LAN 너머 차량 PC 라 GT 리그(0.1 s)보다 넉넉히 — follow 의 max_pose_age_s 와 같은 값.
+    #   진단 그래프 autoware-vils-morai.yaml 이 이 진단을 /autoware/localization 에 건다 (넘으면 MRM)
+    max_sample_age_s: 0.3
+    # 수동 운용(cue 없음)이라 DAQ 를 쓰지 않는다. 켜면 DAQ Ego 는 MORAI 고스트 값이다
+    publish_daq: false
+    daq:
+      raw: false                        # DAQ 를 껐으니 원시 기록도 끈다 (기동 때 "daq.raw=true 인데 publish_daq=false" WARN 방지)
+    # 26.10.13 _ YSH _ kinematic_state twist. 차량 PC 고스트는 위치만 옮겨 MORAI 속도가 늘 0 이다 (10-13 bag) — 그대로 내면
+    #   종방향 PID 가 계속 가속하고 MPC 가 v = 0 모델로 조향해 진동한다. vehicle = 실차 바퀴 속도 + 위치 헤딩 변화율,
+    #   morai = MORAI 보고값 그대로 (차량 PC 가 고스트에 속도를 넣어 주게 되면)
+    localize:
+      twist_source: "vehicle"
+      velocity_max_age_s: 0.2           # 이보다 낡으면 위치 변화 속도로 대신 (ground_truth 진단 WARN)
+      window_s: 0.2                     # 위치·헤딩 변화율 창 (MORAI 표본 25 ms)

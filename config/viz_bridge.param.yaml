@@ -1,0 +1,33 @@
+# 신규 — 26.11.13 _ YSH _ 외란 시각화 전용 브리지 덮어쓰기 파라미터 (연차보고서 1차)
+#   26.11.13 _ YSH _ 13_ 자체 Autoware 의 gt yaml 위에 덮어쓴다 (11_ 것을 복사한 같은 내용). 원문:
+#   11_ 의 morai_interface.gt.param.yaml 위에 덮어쓴다 (launch 인자 overlay_param_file).
+#   목적: KATECH 이 MORAI 에서 Ego 를 직접 조종한다 — 브리지는 MORAI 에 아무 제어도 보내지 않고 GT 를 읽어 외란만 건다.
+#   26.11.13 _ YSH _ 13_ 브리지에 lamp_sync 를 더해 방향지시등 쓰기도 껐다 → MORAI 쓰기 0. 원문:
+#   남는 MORAI 쓰기 1개: 연결·재연결·Ego 재등장 때 방향지시등 "지정 없음" 1회 (코드에 있음, 수동 조종에는 영향 없음).
+/**:
+  ros__parameters:
+    ego_mode: "gt"                      # follow·localize 는 외란 켜기를 REAL_CAR 로 거절한다 — gt 여야 한다
+    # --- MORAI 로 가는 쓰기 전부 끔 ---
+    forward_control_to_sim: false       # ControlVehicle·기어·자율/수동 모드 요청을 보내지 않는다 (KATECH 수동 조종)
+    teleport_on_initialpose: false      # RViz 2D Pose Estimate 로 Ego 를 옮기지 않는다
+    engage_on_start: false              # 첫 연결 때 AUTO 로 바꾸지 않는다
+    auto_reassert_auto: false           # 재연결 뒤 AUTO 로 되돌리지 않는다
+    # 26.11.13 _ YSH _ 13_ 브리지에 더한 파라미터 — 연결 때 방향지시등(SetVehicleTailLight)도 보내지 않는다 (MORAI 쓰기 0)
+    lamp_sync: false
+    steer_report_ignore_foreign: false
+    sensor_model: ""                    # 센서 장착(AddSensor) 안 함
+    command_trigger: "update"           # 명령을 안 보내므로 의미 없음 — 100 Hz 타이머를 돌리지 않게
+    # --- GT·외란 ---
+    publish_ground_truth: true          # map→base_link TF + /perception/object_recognition/tracking/objects (외란 후)
+    time_source: "receive"              # 두 PC 시계를 맞추지 않아도 되게 (이 PC 수신 시각)
+    map_origin_offset_x: 0.0            # 지도 없이 MORAI world = map
+    map_origin_offset_y: 0.0
+    map_origin_offset_z: 0.0
+    map_origin_yaw_offset_deg: 0.0
+    publish_daq: true                   # /daq/* (GT·외란 전후·상태) — 시각화 노드와 bag 이 읽는다
+    daq:
+      mode: "always"                    # cue_server 녹화 구간 없이 늘 낸다
+      raw: false                        # gRPC 원문 JSON(약 50 Hz)은 필요 없다
+      publish_objects: true
+    disturbance:
+      enable: true

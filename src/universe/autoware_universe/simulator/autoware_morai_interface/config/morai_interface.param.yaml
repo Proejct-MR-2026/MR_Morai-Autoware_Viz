@@ -1,0 +1,62 @@
+# 26.09.25 _ YSH _ morai_vehicle_launch/vehicle_interface.launch.xml(launch_vehicle_interface:=true) 경로용.
+#   엔진 교체로 파라미터가 바뀌었다 — 없어진 키(ego_id, client_key, rpc_deadline_ms, connection_retry_period)는
+#   아래에 주석으로 남긴다. 전체 목록과 설명은 morai_interface.gt.param.yaml / README "파라미터".
+#   GT 모드 단독 실행(권장)은 launch/morai_interface_gt.launch.xml + morai_interface.gt.param.yaml 을 쓴다.
+/**:
+  ros__parameters:
+    morai:
+      # 26.09.25 _ YSH _ 주소·포트는 비워 둔다 → 코드 기본값 = 환경변수 MORAI_SIM_ADDRESS/PORT (없으면 10.10.10.1/7789, 26.09.27 변경 — 원래 127.0.0.1)
+      # # MORAI SIM 이 실행 중인 PC 의 IP 와 gRPC 포트.
+      # # 시뮬레이터 메뉴의 Network Settings 에서 확인 / 변경할 수 있다.
+      # address: "127.0.0.1"
+      # port: 7789
+
+      # ObjectIdentifier.value 로 들어가는 ego actor 이름. MORAI 기본값은 "Ego".
+      # 숫자 id 가 아니라 문자열이다.
+      # 26.09.25 _ YSH _ ego_id → ego_name
+      # ego_id: "Ego"
+      ego_name: "Ego"
+
+      # 26.09.25 _ YSH _ client_key 는 main.py 처럼 비운다 (파라미터 없음)
+      # # ObjectInfo.client_key. 임의 문자열이며 MORAI 가 추적용으로 되돌려준다.
+      # client_key: "autoware_morai_interface"
+
+      # 26.09.25 _ YSH _ 호출 종류별 deadline 으로 나눴다
+      # # RPC 당 deadline [ms]. 모든 호출이 unary + blocking 이므로,
+      # # 시뮬이 응답하지 않을 때 호출자가 얼마나 붙잡히는지의 상한이 된다.
+      # rpc_deadline_ms: 100
+      wait_for_tick_deadline_ms: 100
+      state_deadline_ms: 100
+      command_deadline_ms: 50
+
+    # false 면 Autoware 의 제어 / 기어 명령을 MORAI 로 보내지 않는다.
+    # 측위·인지 디버깅 중 시뮬레이터 키보드로 직접 몰 때 쓴다.
+    # SIM -> ADS 방향(속도/조향/기어 리포트)은 그대로라 Autoware 는 계속 관측한다.
+    # 콜백마다 읽으므로 재시작 없이 런타임 전환 가능.
+    #   ros2 param set /morai_interface forward_control_to_sim false
+    forward_control_to_sim: true
+
+    # 제어 명령의 조향 부호. MORAI 는 상태 필드와 명령 필드의 부호 규약이 서로 반대다.
+    #   명령 쪽은 ROS 와 같은 규약(양수 = 좌회전)이라 반전이 필요 없다.
+    # 리포트 쪽은 반대라 코드에 -1.0 이 하드코딩되어 있다. 이 비대칭은 의도된 것이며,
+    # 두 규칙을 서로 다른 파일에 두어 "통일" 하려는 시도를 구조적으로 막아두었다.
+    # 26.09.25 _ YSH _ 명령은 정규화하지 않는다 (라디안 그대로 ±max 클램프, main.py eba6b04)
+    #   actor_control.proto:29-30 — steer = 원하는 스티어링 값(radian) / 최대 조향각,
+    steer_cmd_sign: 1.0
+
+    # 26.09.25 _ YSH _ A/B — ControlVehicle 트리거 (런타임 전환 가능). update = MORAI 업데이트당 1 회 (기본),
+    #   timer = 최신 명령을 cmd_resend_hz 고정 주기로 동기 송신 (main.py _CmdResender 조건). 설명은 README "명령 트리거 A/B"
+    command_trigger: "update"
+    cmd_resend_hz: 100.0
+
+    # 26.09.25 _ YSH _ 연결·스펙 재시도는 엔진 스레드가 백오프로 한다 (파라미터 없음)
+    # # MORAI 연결 / 차량 제원 조회 재시도 주기 [s].
+    # # 생성자에서 블로킹하지 않고 이 타이머로 처리한다 (컴포넌트 컨테이너 보호).
+    # connection_retry_period: 1.0
+
+    # 26.09.25 _ YSH _ 이 경로에서도 GT 를 낸다 (e2e 의 morai 기본이 use_ground_truth:=true).
+    #   use_ground_truth:=false (Autoware localization 스택 사용)로 돌릴 땐 false 로.
+    publish_ground_truth: true
+    sensor_model: ""
+    # 26.09.26 _ YSH _ DAQ 는 GT 모드 yaml(morai_interface.gt.param.yaml)에서만 켠다
+    publish_daq: false

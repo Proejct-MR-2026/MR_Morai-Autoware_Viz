@@ -1,0 +1,101 @@
+# 신규 — 26.09.25 _ YSH _ GT 모드(e2e_simulator use_ground_truth:=true, launch_vehicle_interface:=false)에서
+#   main.py 대신 C++ 엔진을 띄울 때의 파라미터. 값은 전부 코드 기본값과 같다 — 무엇을 바꿀 수 있는지 보이려고 적었다.
+#   morai.address / morai.port 는 일부러 넣지 않는다: launch 인자(morai_address/morai_port)가 주고, 그 기본값은
+#   환경변수 MORAI_SIM_ADDRESS / MORAI_SIM_PORT (없으면 원래 컴퓨터의 MORAI PC 10.10.10.1 / 7789) 다.
+#   26.09.27 _ YSH _ 원문: main.py 와 같은 환경변수 MORAI_SIM_ADDRESS / MORAI_SIM_PORT (없으면 127.0.0.1 / 7789) 다.
+#   (런타임) 표시가 있는 값은 `ros2 param set /morai_bridge <이름> <값>` 으로 재시작 없이 바뀐다
+#   (GT launch 의 노드 이름 기본값은 main.py 와 같은 morai_bridge).
+/**:
+  ros__parameters:
+    morai:
+      ego_name: "Ego"                   # ObjectInfo.id.value (문자열)
+      wait_for_tick_deadline_ms: 100    # 업데이트 트리거 대기 상한 (MORAI 내부 정체는 최대 ~108 ms 실측)
+      state_deadline_ms: 100            # GetAllActorsState / GetVehicleControlMode
+      command_deadline_ms: 50           # ControlVehicle 하한 (main.py cmd_rpc_timeout_s 0.05). 실제 = max(이 값, 4×왕복 p50), 상한 1 s
+      gear_deadline_ms: 200             # SetVehicleGear (main.py gear_rpc_timeout_s 0.2)
+      control_mode_deadline_ms: 200     # SetVehicleControlMode
+      transform_deadline_ms: 1000       # SetTransform (/initialpose 텔레포트)
+      tail_light_deadline_ms: 200       # SetVehicleTailLight
+      spec_deadline_ms: 3000            # GetVehicleSpec
+      keepalive_time_ms: 0              # 0 = 끔. 서브 PC 에서 MORAI PING 정책을 확인한 뒤 5000 등으로
+
+    # --- 명령 (main.py 이름) ---
+    forward_control_to_sim: true        # (런타임) false = MORAI 키보드 수동 주행, Autoware 는 관측만
+    steer_cmd_sign: 1.0                 # (런타임) 리포트 쪽 -1 과 일부러 비대칭 — 바꾸지 말 것
+    steer_comp_enable: true             # (런타임) MORAI 조향 결손 보정
+    steer_comp_speeds_mps: [2.0, 5.0, 8.0, 11.0]    # (런타임)
+    steer_comp_gains: [0.870, 0.855, 0.807, 0.796]  # (런타임)
+    long_cmd_mode: "acceleration"       # (런타임) acceleration | throttle | velocity
+    send_pedal_with_accel: false        # (런타임)
+    pedal_accel_max: 3.0                # (런타임) [m/s^2]
+    pedal_brake_max: 4.5                # (런타임) [m/s^2]
+    velocity_cmd_unit: "kph"            # VehicleCtrlCmd.velocity 단위 (kph | mps | off)
+    cmd_stale_timeout_s: 0.2            # control_cmd 가 이보다 오래되면 감속 대체 명령 (조향은 마지막 값)
+    cmd_stale_accel: -2.4               # [m/s^2], 음수만
+    # 26.09.25 _ YSH _ A/B — ControlVehicle 트리거. main.py 조건 재현은 MORAI 기본 ~50 Hz + timer + 100 Hz
+    #   (주행 중 변경: ros2 param set /morai_bridge command_trigger update|timer — launch 인자는 없다)
+    # 26.09.25 _ YSH _ GT 기본을 timer 100 Hz 로 (사용자 결정: main.py 와 같은 100 Hz 로 간다). 원문:
+    # command_trigger: "update"           # (런타임) update = MORAI 업데이트당 1 회 | timer = cmd_resend_hz 고정 주기 동기 송신
+    command_trigger: "timer"            # (런타임) update = MORAI 업데이트당 1 회 | timer = cmd_resend_hz 고정 주기 동기 송신
+    cmd_resend_hz: 100.0                # (런타임) timer 일 때 주기 [Hz] (main.py 이름·기본값, 10~400). update 면 안 쓴다
+    gear_resync_s: 1.0
+    gear_retry_s: 0.2
+
+    # --- 상태·GT ---
+    publish_ground_truth: true          # kinematic_state + map→base_link TF + TrackedObjects + 측위 초기화
+    steer_report_hold: true             # (런타임) 조향 리포트 0 드롭아웃이면 직전값
+    # 26.10.01 _ YSH _ 외부 조향 필터. 값은 launch 가 환경변수 MORAI_STEER_FILTER(없으면 false)로 덮는다 —
+    #   리그는 `STEER_FILTER=1 ./run_rig.sh` 또는 주행 중 `./run_rig.sh filter on|off`
+    steer_report_ignore_foreign: false  # (런타임) 우리가 보내지 않은 조향이 적용된 프레임의 리포트를 직전 우리 값으로
+    steer_input_norm_deg: 40.0          # (런타임) MORAI front_wheel_angle 1.0 의 조향각 [deg] (판정용, 실측 40)
+    map_origin_offset_x: 0.0            # (런타임) map = R(yaw) * morai + offset — 맵마다 실측값
+    map_origin_offset_y: 0.0            # (런타임)
+    map_origin_offset_z: 0.0            # (런타임)
+    map_origin_yaw_offset_deg: 0.0      # (런타임)
+    teleport_on_initialpose: true       # (런타임) RViz 2D Pose Estimate → MORAI Ego 순간이동
+
+    # --- 시간·신선도 ---
+    # 26.09.27 _ YSH _ 원래 컴퓨터(ADS PC ↔ MORAI PC)는 시계 동기화가 확인되지 않았다 → receive (옛 main.py 와 같은 방식).
+    #   MORAI 원래 시각은 /daq/raw/actor_states 의 morai_timestamp_us 에 그대로 남는다. chrony 를 맞추면 morai 로 돌려도 된다.
+    #   이 값만 코드 기본값(morai)과 다르다. 원문:
+    # time_source: "morai"                # morai = ActorStates.timestamp (두 PC 면 chrony 필수) | receive = 이 PC 수신 시각
+    time_source: "receive"              # morai = ActorStates.timestamp (두 PC 면 chrony 필수) | receive = 이 PC 수신 시각
+    publish_clock: false                # /clock 에 메시지 stamp (기본 MORAI 샘플 시각, use_sim_time 쓸 때만)
+    max_sample_age_s: 0.1               # 새 표본이 이보다 오래 없으면 진단 ERROR (발행은 새 표본에만)
+    actor_hold_s: 0.5                   # 예약 (지금은 효과 없음 — 액터가 Ego 와 같은 호출에서 와 따로 낡지 않는다)
+    clock_offset_warn_ms: 20.0          # |MORAI − 수신| 중앙값이 이보다 크면 진단 WARN
+    fallback_hz: 100.0                  # WaitForTick 이 안 되는 빌드·동기 모드에서 폴링+송신 주기
+
+    # --- 모드 ---
+    auto_reassert_auto: true            # 재연결 뒤 KEYBOARD 면 마지막 요청(AUTO)으로 재지정
+    engage_on_start: false              # 첫 연결 때 MORAI 를 AUTO 로
+
+    sensor_model: ""                    # GT 모드는 센서를 쓰지 않는다 — 비워 둔다
+    duplicate_writer_guard: true        # 다른 publisher 가 velocity_status 를 내면 ControlVehicle 차단 (false = 진단만)
+
+    # --- 26.09.26 _ YSH _ DAQ (ViLS 명세 25 항목 100 Hz — daq_publisher.py 대체, 같은 스냅샷에서) ---
+    publish_daq: true                   # /daq/{ego_status,object_status,vehicle_cmd} (26.10.05 _ YSH _ MORAI 메시지. 원문: /daq/{vehicle_state,acceleration,track_objects,vehicle_cmd})
+    daq:
+      mode: "gated"                     # (런타임) gated = cue_server 녹화 구간(/daq/run_state active)만 | always = 늘 (수동 주행·record_run)
+      rate_hz: 100.0                    # 명세 100 Hz (MORAI ~50 Hz 표본의 ZOH)
+      max_sample_age_s: 0.1             # 표본이 이만큼 낡으면 상태 토픽 멈춤·결손 집계 (daq_publisher 와 같음)
+      cmd_stale_s: 0.2                  # 새 control_cmd 가 이만큼 없으면 vehicle_cmd 멈춤 (이전 런 값이 남지 않게)
+      accel_scale: 1.0
+      publish_objects: true
+      publish_collision: true           # 26.10.07 _ YSH _ /daq/collision (gRPC Ego collision_objects → MORAI CollisionData)
+      stamp: "sample"                   # sample = MORAI 표본 시각 | tick = 발행 시각 (오프라인 도구는 둘 다 bag 수신 시각을 쓴다)
+      run_timeout_s: 1200.0             # idle 이 안 오면(cue_server 사망) 자동 종료
+      topic_prefix: "/daq"
+      # 26.09.26 _ YSH _ 원시 gRPC 기록 — gRPC 가 준 값 그대로 (코드 기본은 false, GT 는 켠다)
+      raw: true                         # /daq/raw/actor_states (업데이트마다 응답 전체) · /daq/raw/vehicle_ctrl_cmd (송신마다 요청 그대로), proto3 JSON
+      raw_queue_depth: 256              # 엔진·명령 스레드 → DAQ 스레드 큐 (넘치면 가장 오래된 것 버림·요약에 raw_dropped/tx_dropped)
+
+    # --- 26.11.10 _ YSH _ 외란 주입 (악의조건 — Autoware 로 가는 GT 객체에만 건다. 코드 기본은 false, 11_ GT 는 켠다) ---
+    #   서비스 /morai_bridge/set_disturbance (mr_disturbance_msgs/srv/SetDisturbance) 로 명령을 받는다
+    #     disturbance, position, <종 편차 m>, <종 표준편차 m>, <횡 편차 m>, <횡 표준편차 m>
+    #     disturbance, dropout, <보일 확률 0~1>, <평균 끊김 s>      disturbance, blackout, <길이 s>, <복구 1|0>
+    #     disturbance, clear                                        disturbance, <종류>, clear
+    #   객체 프레임(약 10 Hz)마다 /daq/disturbance 와 /daq/object_status_disturbed 를 녹화 구간에만 낸다.
+    #   /daq/object_status·/daq/raw/* 는 GT 그대로다. follow·localize(실차)에서는 켜는 명령을 REAL_CAR 로 거절한다
+    disturbance:
+      enable: true                      # false = 서비스·토픽·엔진 경로 전부 없음 (10_ 과 같은 동작)

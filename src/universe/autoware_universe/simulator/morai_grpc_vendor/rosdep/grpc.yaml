@@ -1,0 +1,16 @@
+# 선택적 로컬 rosdep 룰 — 기본으로는 연결되어 있지 않다.
+#
+# package.xml 은 일부러 이 키를 참조하지 않는다. 참조하면
+# `rosdep install --from-paths src --ignore-src -y` 가 이 패키지 하나가 아니라
+# 워크스페이스 전체에 대해 "Cannot locate rosdep definition" 으로 죽기 때문이다.
+#
+# rosdep 자족성이 필요한 사이트만 아래처럼 opt-in 하고,
+# package.xml 에 <depend>libgrpc++-dev</depend> 를 추가하면 된다.
+#
+#   sudo sh -c 'echo "yaml file://$PWD/src/universe/autoware_universe/simulator/morai_grpc_vendor/rosdep/grpc.yaml" \
+#     > /etc/ros/rosdep/sources.list.d/50-morai.list'
+#   rosdep update
+libgrpc++-dev:
+  ubuntu:
+    jammy: [libgrpc++-dev, protobuf-compiler-grpc]
+    noble: [libgrpc++-dev, protobuf-compiler-grpc]

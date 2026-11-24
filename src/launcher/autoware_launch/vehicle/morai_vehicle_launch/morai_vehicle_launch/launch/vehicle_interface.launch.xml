@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MORAI vehicle interface.
+
+     tier4_vehicle_launch/launch/vehicle.launch.xml 이 launch_vehicle_interface 가 true 일 때
+     이 파일을 include 한다. 실제 인터페이스는 autoware_morai_interface 의 C++ 컴포넌트가
+     담당하고, gRPC 로 MORAI Actor 서비스와 통신한다.
+
+     raw_vehicle_cmd_converter 를 띄우지 않는다. MORAI 는 가속도 명령을 직접 받으므로
+     (VehicleCtrlCmd.long_cmd_type = ACCELERATION) 페달 맵 변환이 필요 없다. AWSIM 인터페이스가
+     그걸 쓰는 것과 다른 지점이다.
+
+     component_container_mt 가 필수다. 노드가 명령/상태 방향을 서로 다른 MutuallyExclusive
+     콜백 그룹에 두는데, 단일스레드 executor 에서는 그 분리가 무의미해져 blocking 상태 RPC 가
+     제어 명령 전달을 최대 rpc_deadline_ms 만큼 막는다. -->
+<launch>
+  <!-- tier4_vehicle_launch 가 넘기는 인자들. MORAI 는 셋 다 쓰지 않지만, 넘어오는 값을
+       문서화하기 위해 선언해둔다. -->
+  <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
+  <arg name="raw_vehicle_cmd_converter_param_path" default=""/>
+  <arg name="initial_engage_state" default="false"/>
+
+  <!-- 이 값을 넘기면 <sensor_model>_description 의 캘리브레이션대로 MORAI 에 센서를 장착한다.
+       빈 문자열이면 센서를 건드리지 않는다. tier4_vehicle_launch 가 sensor_model 을
+       넘겨주지 않으므로 e2e_simulator.launch.xml 에서 내려와야 한다. -->
+  <arg name="sensor_model" default=""/>
+
+  <arg name="config_file" default="$(find-pkg-share autoware_morai_interface)/config/morai_interface.param.yaml"/>
+  <arg name="container_name" default="morai_interface_container"/>
+
+  <node_container pkg="rclcpp_components" exec="component_container_mt" name="$(var container_name)" namespace="" output="screen">
+    <composable_node pkg="autoware_morai_interface" plugin="autoware::morai_interface::MoraiInterfaceNode" name="morai_interface">
+      <param from="$(var config_file)"/>
+      <param name="sensor_model" value="$(var sensor_model)"/>
+
+      <!-- SIM -> ADS -->
+      <remap from="~/output/velocity_status" to="/vehicle/status/velocity_status"/>
+      <remap from="~/output/steering_status" to="/vehicle/status/steering_status"/>
+      <remap from="~/output/gear_status" to="/vehicle/status/gear_status"/>
+      <remap from="~/output/control_mode" to="/vehicle/status/control_mode"/>
+      <remap from="~/output/turn_indicators_status" to="/vehicle/status/turn_indicators_status"/>
+      <remap from="~/output/hazard_lights_status" to="/vehicle/status/hazard_lights_status"/>
+
+      <!-- ADS -> SIM -->
+      <remap from="~/input/control_cmd" to="/control/command/control_cmd"/>
+      <remap from="~/input/gear_cmd" to="/control/command/gear_cmd"/>
+      <remap from="~/input/turn_indicators_cmd" to="/control/command/turn_indicators_cmd"/>
+      <remap from="~/input/hazard_lights_cmd" to="/control/command/hazard_lights_cmd"/>
+      <remap from="~/input/control_mode_request" to="/control/control_mode_request"/>
+
+      <extra_arg name="use_intra_process_comms" value="false"/>
+    </composable_node>
+  </node_container>
+</launch>

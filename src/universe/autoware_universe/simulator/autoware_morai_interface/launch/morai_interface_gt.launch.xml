@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 신규 — 26.09.25 _ YSH _ GT 모드 단독 실행 (Morai_Autoware_Bridge/scripts/main.py 대체).
+
+     Autoware 는 따로 띄운다:
+       ros2 launch autoware_launch e2e_simulator.launch.xml simulator_type:=morai \
+         use_ground_truth:=true launch_vehicle_interface:=false ...
+     그리고 이 launch 를 띄운다 (main.py 는 절대 같이 띄우지 않는다 — 노드의 중복 writer 가드가
+     /vehicle/status/velocity_status 에 다른 publisher 가 보이면 ControlVehicle 을 막는다):
+       ros2 launch autoware_morai_interface morai_interface_gt.launch.xml morai_address:=10.10.10.1
+
+     노드 이름은 main.py 와 같은 morai_bridge 가 기본이다 — daq_publisher(map_origin_* 읽기)·mission_server
+     (teleport_on_initialpose·forward_control_to_sim 쓰기)·scenario_pose 와 `ros2 param set /morai_bridge ...` 가
+     그대로 동작한다. 가드는 자기 publisher 하나만 빼므로 같은 이름의 main.py 도 잡는다.
+     토픽 이름·QoS 는 main.py 와 같은 절대 이름이라 remap 이 없다. 단독 실행 파일은 MultiThreadedExecutor 다. -->
+<launch>
+  <!-- 26.09.27 _ YSH _ 기본값을 원래 컴퓨터의 MORAI PC(10.10.10.1)로. 원문: default="$(env MORAI_SIM_ADDRESS 127.0.0.1)" -->
+  <arg name="morai_address" default="$(env MORAI_SIM_ADDRESS 10.10.10.1)" description="MORAI PC 주소 (기본: 환경변수 MORAI_SIM_ADDRESS, 없으면 10.10.10.1)"/>
+  <arg name="morai_port" default="$(env MORAI_SIM_PORT 7789)" description="MORAI gRPC 포트 (기본: 환경변수 MORAI_SIM_PORT)"/>
+  <arg name="param_file" default="$(find-pkg-share autoware_morai_interface)/config/morai_interface.gt.param.yaml" description="파라미터 파일"/>
+  <!-- 26.10.10 _ YSH _ param_file 위에 덧씌울 파일 (의사 VILS: config/morai_interface.follow.param.yaml). 기본은 param_file 그대로 -->
+  <arg name="overlay_param_file" default="$(var param_file)" description="param_file 뒤에 덧씌울 파라미터 파일"/>
+  <arg name="node_name" default="morai_bridge" description="노드 이름 (main.py 와 같은 morai_bridge — 브릿지 이름으로 파라미터를 찾는 도구들 때문)"/>
+  <!-- 26.09.25 _ YSH _ command_trigger / cmd_resend_hz 는 launch 인자로 덮지 않는다 — 인자 기본값(update)이 항상
+       param_file 뒤에 붙어 yaml 에서 timer 로 바꿔도 무시됐다(검토 지적). 기준은 param_file(yaml), 주행 중 변경은
+       `ros2 param set /morai_bridge command_trigger timer` (둘 다 런타임 파라미터). 원문:
+  <arg name="command_trigger" default="update" description="update = MORAI 업데이트당 ControlVehicle 1 회 (기본) | timer = cmd_resend_hz 고정 주기 (main.py _CmdResender 조건)"/>
+  <arg name="cmd_resend_hz" default="100.0" description="command_trigger=timer 일 때 ControlVehicle 주기 [Hz] (main.py 이름·기본값, 10~400)"/>
+  -->
+
+  <node pkg="autoware_morai_interface" exec="autoware_morai_interface_node" name="$(var node_name)" output="screen">
+    <param from="$(var param_file)"/>
+    <param from="$(var overlay_param_file)"/>  <!-- 26.10.10 _ YSH _ -->
+    <param name="morai.address" value="$(var morai_address)"/>
+    <param name="morai.port" value="$(var morai_port)"/>
+    <!-- 26.10.01 _ YSH _ 외부 조향 필터 — 리그가 환경변수로 켠다 (STEER_FILTER=1 ./run_rig.sh → MORAI_STEER_FILTER=true).
+         환경변수라서 감시기가 Autoware 를 재기동해도 유지된다. 없으면 false = yaml 기본과 같다.
+         주행 중 전환은 `ros2 param set /morai_bridge steer_report_ignore_foreign true|false` (run_rig.sh filter on|off) -->
+    <param name="steer_report_ignore_foreign" value="$(env MORAI_STEER_FILTER false)"/>
+    <!-- 26.09.25 _ YSH _ 위와 같은 이유로 제거 (원문):
+    <param name="command_trigger" value="$(var command_trigger)"/>
+    <param name="cmd_resend_hz" value="$(var cmd_resend_hz)"/>
+    -->
+  </node>
+</launch>

@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+
+package cue;
+
+message CueRequest {
+  string cue_type = 1;
+  string scenario_name = 2;
+  string sender = 3;
+  float start_x = 4;
+  float start_y = 5;
+  float start_rotation_z = 6;
+  float goal_x = 7;
+  float goal_y = 8;
+  float goal_rotation_z = 9;
+  float v0_sv_mps = 10;
+}
+
+message CueResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message PingRequest {}
+
+message PingResponse {
+  bool alive = 1;
+}
+
+enum TestState {
+  WAIT = 0;
+  READY = 1;
+  RUNNING = 2;
+  END = 3;
+}
+
+message StateRequest {
+  TestState state = 1;
+  string sender = 2;
+}
+
+message StateResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CustomCommandRequest {
+    string Type = 1;
+    google.protobuf.Value Value = 2;
+}
+
+message CustomCommandResponse {
+    bool success = 1;
+}
+
+service CueService {
+  rpc SendCue(CueRequest) returns (CueResponse);
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc SendState(StateRequest) returns (StateResponse);
+  rpc SendCustomCommand (CustomCommandRequest) returns (CustomCommandResponse);    
+}

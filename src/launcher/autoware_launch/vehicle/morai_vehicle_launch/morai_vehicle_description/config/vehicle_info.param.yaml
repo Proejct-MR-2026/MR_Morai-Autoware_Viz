@@ -1,0 +1,38 @@
+# MORAI ego 차량(Hyundai IONIQ 5, NE)의 기하학적 제원.
+# 값의 출처는 MORAI gRPC GetVehicleSpec 실측이다(26.09.07).
+# 내부 정합: front_overhang + wheel_base + rear_overhang = 4.635 m (= MORAI length),
+#            wheel_tread + left_overhang + right_overhang = 1.892 m (= MORAI width).
+#
+# 26.09.07 _ YSH _ 2016 아이오닉(AE) 카탈로그 값으로 채워져 있던 것을 실제 ego(아이오닉 5)로 교체.
+#   MORAI GetVehicleSpec 응답:
+#     sub_category=VEHICLE_CLASS_SUV (아이오닉5 는 CUV 라 MORAI 가 SUV 로 분류한다)
+#     length=4.635  width=1.892  height=2.434  wheel_base=3.0
+#     front_overhang=0.845  rear_overhang=0.790  wheel_radius=0.36  max_steering_angle=40.0deg
+#   기존 값은 전장 4470 / 전폭 1820 / 전고 1450 / wheel_base 2700 인 구형 아이오닉(AE) 세단이었다.
+#   이름이 둘 다 "아이오닉"이라 다른 차인 것이 넘어갔다.
+#
+#   wheel_base 2.70 -> 3.00 이 핵심이다. 자전거 모델이 delta = atan(L * kappa) 로 조향각을
+#   내므로 L 을 10% 작게 잡으면 실현 곡률이 0.9배가 되어 곡선마다 바깥으로 밀린다
+#   (MPC 가 되먹임으로 메우느라 횡오차 9 cm 로 보였을 뿐 원인은 남아 있었다).
+#
+#   각 항목의 원래 값은 바로 위 주석줄에 보존한다.
+/**:
+  ros__parameters:
+    # wheel_radius: 0.317 # 195/65 R15 기준 타이어 반경
+    wheel_radius: 0.36 # MORAI 실측
+    wheel_width: 0.215 # MORAI 미보고 — footprint 계산에 안 쓰여 유지
+    # wheel_base: 2.70 # 앞바퀴 중심 ~ 뒷바퀴 중심
+    wheel_base: 3.00 # MORAI 실측 (아이오닉5 3,000 mm)
+    # wheel_tread: 1.56 # 좌우 바퀴 중심 간
+    wheel_tread: 1.638 # 아이오닉5 전륜 윤거
+    # front_overhang: 0.88 # 앞바퀴 중심 ~ 차량 앞끝
+    front_overhang: 0.845 # MORAI 실측
+    # rear_overhang: 0.89 # 뒷바퀴 중심 ~ 차량 뒤끝
+    rear_overhang: 0.790 # MORAI 실측
+    # left_overhang: 0.13 # 좌측 바퀴 중심 ~ 차량 좌측
+    left_overhang: 0.127 # 1.638 + 0.127*2 = 1.892 (= MORAI width)
+    # right_overhang: 0.13 # 우측 바퀴 중심 ~ 차량 우측
+    right_overhang: 0.127
+    # vehicle_height: 1.45
+    vehicle_height: 2.434 # MORAI 실측. 아이오닉5 실차는 1.605 지만 MORAI 충돌 박스는 루프 랙 포함
+    max_steer_angle: 0.698132 # [rad] — MORAI get_vehicle_spec 실측 40.0deg (26.08.22). 이전 0.60 은 과소 — 실제 조향한계는 브리지가 런타임 gRPC(get_vehicle_spec)로 받음

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>morai_vehicle_launch</name>
+  <version>0.1.0</version>
+  <description>The morai_vehicle_launch package - vehicle interface launch for the MORAI ego</description>
+  <maintainer email="yshgit@gmail.com">YSH</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+
+  <!-- 26.08.31 _ YSH _ autoware_morai_interface 는 COLCON_IGNORE 로 빌드 제외 상태다.
+       워크스페이스에 없는 패키지를 exec_depend 로 두면 rosdep install 이 시스템 패키지로
+       찾다가 실패하므로 주석 처리한다. C++ 인터페이스를 되살릴 때 같이 되돌릴 것.
+       (vehicle_interface.launch.xml 은 그대로 두었다 — launch_vehicle_interface 가
+        false 라 include 되지 않는다) -->
+  <!-- <exec_depend>autoware_morai_interface</exec_depend> -->
+  <exec_depend>morai_vehicle_description</exec_depend>
+  <exec_depend>rclcpp_components</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -1,0 +1,7 @@
+# 신규 — 26.11.24 _ YSH _ 공유본 .gitignore
+build/
+install/
+log/
+data/
+__pycache__/
+*.pyc

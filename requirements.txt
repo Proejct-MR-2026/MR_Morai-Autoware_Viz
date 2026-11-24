@@ -1,0 +1,3 @@
+# 신규 — 26.11.24 _ YSH _ 공유본 파이썬 의존성 (scripts/cue 스텁이 grpcio-tools 1.44.0 으로 만들어졌다)
+grpcio==1.44.0
+protobuf==3.20.3

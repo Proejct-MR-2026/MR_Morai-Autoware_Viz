@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>morai_grpc_vendor</name>
+  <version>0.1.0</version>
+  <!-- 26.09.24 _ YSH _ 파일 수 15 -> 31 (sensor 는 이전에 추가됐으나 문구 누락, 이번에 simulation/simulator 추가), morai_probe 도구 언급
+    Vendored MORAI SIM gRPC interface. Contains the transitive import closure of
+    morai/actor/actor.proto (15 files), the protobuf/gRPC C++ code generated from it at
+    build time, and a thin client for the Actor service.
+  -->
+  <!-- 26.09.25 _ YSH _ Ego 를 움직이는 측정 도구 morai_actuate 언급 추가. 원래 문단:
+    Vendored MORAI SIM gRPC interface. Contains the transitive import closure of the
+    Actor, Sensor, Simulation and Simulator service files (31 files), the protobuf/gRPC
+    C++ code generated from them at build time, thin clients for the Actor and Sensor
+    services, and the read-only measurement tool 'morai_probe'.
+  -->
+  <!-- 26.09.25 _ YSH _ 엔진용 링크 계층 MoraiLink 와 morai_probe monitor 언급 추가. 원래 문단:
+    Vendored MORAI SIM gRPC interface. Contains the transitive import closure of the
+    Actor, Sensor, Simulation and Simulator service files (31 files), the protobuf/gRPC
+    C++ code generated from them at build time, thin clients for the Actor and Sensor
+    services, the read-only measurement tool 'morai_probe', and 'morai_actuate', which
+    drives the Ego (opt-in flag, restores mode and gear) to measure ControlVehicle
+    consumption.
+  -->
+  <description>
+    Vendored MORAI SIM gRPC interface. Contains the transitive import closure of the
+    Actor, Sensor, Simulation and Simulator service files (31 files), the protobuf/gRPC
+    C++ code generated from them at build time, thin clients for the Actor and Sensor
+    services, 'MoraiLink' (a two-channel state/command link layer for the C++ engine whose
+    public headers expose neither gRPC nor protobuf), the read-only measurement tool
+    'morai_probe' (including 'monitor', which watches what MORAI applies while something
+    else drives), and 'morai_actuate', which drives the Ego (opt-in flag, restores mode and
+    gear) to measure ControlVehicle consumption.
+
+    Files under proto/ are third-party and are reproduced verbatim; do not edit them.
+    See PROVENANCE.md for the upstream URL, commit and license status.
+
+    BUILD PREREQUISITE NOT COVERED BY ROSDEP: this package needs the gRPC C++ runtime and
+    codegen plugin, for which no rosdep key exists. Install them with
+    'sudo apt-get install -y libgrpc++-dev protobuf-compiler-grpc'. See README.md.
+  </description>
+  <maintainer email="yshgit@gmail.com">YSH</maintainer>
+
+  <license>Apache-2.0</license>
+  <license file="PROVENANCE.md">LicenseRef-MORAI-Proprietary</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>protobuf-dev</depend>
+
+  <!-- 26.09.24 _ YSH _ morai_probe 순수 헬퍼 gtest -->
+  <test_depend>ament_cmake_gtest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

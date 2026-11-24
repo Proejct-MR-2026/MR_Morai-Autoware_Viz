@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>autoware_morai_interface</name>
+  <version>0.1.0</version>
+  <description>Autoware vehicle interface for the MORAI SIM simulator</description>
+  <maintainer email="yshgit@gmail.com">YSH</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <buildtool_depend>autoware_cmake</buildtool_depend>
+
+  <depend>ament_index_cpp</depend>
+  <depend>autoware_control_msgs</depend>
+  <!-- 26.09.25 _ YSH _ GT 모드 엔진: 측위 초기화 srv, TrackedObjects, kinematic_state·TF, /clock, 진단, uuid5(boost) -->
+  <depend>autoware_localization_msgs</depend>
+  <depend>autoware_perception_msgs</depend>
+  <depend>autoware_vehicle_msgs</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>diagnostic_updater</depend>
+  <depend>geometry_msgs</depend>
+  <depend>libboost-dev</depend>
+  <depend>morai_grpc_vendor</depend>
+  <!-- 26.10.05 _ YSH _ DAQ 명세 토픽을 MORAI 공식 메시지(26.R1)로 — /daq/ego_status·/daq/object_status -->
+  <depend>morai_ros2_msgs</depend>
+  <!-- 26.11.10 _ YSH _ 외란 주입: 서비스 ~/set_disturbance, DAQ 토픽 /daq/disturbance (mr_disturbance_msgs, 신규 패키지) -->
+  <!-- 26.11.11 _ YSH _ 외란 메시지는 morai_ros2_msgs(외란 추가판, 위 depend)로 옮겼다. 원문: <depend>mr_disturbance_msgs</depend> -->
+  <depend>nav_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>rosgraph_msgs</depend>
+  <depend>sensor_msgs</depend>  <!-- 26.10.12 _ YSH _ VILS: 실차 K-CAN 가속도 (/vehicle/status/kcan_imu) -->
+  <!-- 26.09.26 _ YSH _ DAQ 게이트 /daq/run_state·/daq/run_summary (std_msgs/String) -->
+  <depend>std_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>tier4_vehicle_msgs</depend>  <!-- 26.10.12 _ YSH _ VILS: 실차 페달·브레이크 (/vehicle/status/actuation_status) -->
+  <depend>unique_identifier_msgs</depend>
+  <depend>yaml-cpp</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>autoware_lint_common</test_depend>
+  <!-- 26.09.25 _ YSH _ test_sensor_kit_mounter 가 실제 센서킷 캘리브레이션을 읽는다 -->
+  <test_depend>morai_sensor_kit_description</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

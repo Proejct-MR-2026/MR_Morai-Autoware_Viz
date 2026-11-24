@@ -1,0 +1,2 @@
+# 신규 — 26.11.24 _ YSH _ 오프라인 리허설용 시험 도구(가짜 시나리오 API)를 11_ 에서 복사했다. 받는 쪽 컴퓨터에는 11_ 이 없다.
+cue_sim.py  <- ~/11_Disturbance-Autoware/MR_Morai-Autoware-Bridge_Disturbance/scripts/cue_sim.py (26.11.24 그대로)

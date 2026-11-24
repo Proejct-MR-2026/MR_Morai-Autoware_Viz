@@ -1,0 +1,444 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Parameters for the MORAI Vehicle Interface Node",
+  "type": "object",
+  "definitions": {
+    "morai_interface": {
+      "type": "object",
+      "properties": {
+        "morai": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "string",
+              "default": "10.10.10.1",
+              "description": "MORAI PC address. Code default: env MORAI_SIM_ADDRESS, else 10.10.10.1 (the rig MORAI PC). Read once at start-up."
+            },
+            "port": {
+              "type": "integer",
+              "default": 7789,
+              "description": "MORAI gRPC port. Code default: env MORAI_SIM_PORT, else 7789.",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "ego_name": {
+              "type": "string",
+              "default": "Ego",
+              "description": "ObjectInfo.id.value of the ego actor (a string, MORAI default 'Ego')."
+            },
+            "wait_for_tick_deadline_ms": {
+              "type": "integer",
+              "default": 100,
+              "description": "WaitForTick deadline (the per-update trigger) [ms].",
+              "exclusiveMinimum": 0
+            },
+            "state_deadline_ms": {
+              "type": "integer",
+              "default": 100,
+              "description": "GetAllActorsState / GetVehicleControlMode deadline [ms].",
+              "exclusiveMinimum": 0
+            },
+            "command_deadline_ms": {
+              "type": "integer",
+              "default": 50,
+              "description": "Lower bound of the ControlVehicle deadline [ms] (main.py cmd_rpc_timeout_s). Effective value = max(this, 4 x MORAI round trip p50), capped at max(1000, this) (main.py cmd_timeout_for_rtt).",
+              "exclusiveMinimum": 0
+            },
+            "gear_deadline_ms": {
+              "type": "integer",
+              "default": 200,
+              "description": "SetVehicleGear deadline [ms] (main.py gear_rpc_timeout_s).",
+              "exclusiveMinimum": 0
+            },
+            "control_mode_deadline_ms": {
+              "type": "integer",
+              "default": 200,
+              "description": "SetVehicleControlMode deadline [ms].",
+              "exclusiveMinimum": 0
+            },
+            "transform_deadline_ms": {
+              "type": "integer",
+              "default": 1000,
+              "description": "SetTransform deadline [ms] (/initialpose teleport).",
+              "exclusiveMinimum": 0
+            },
+            "tail_light_deadline_ms": {
+              "type": "integer",
+              "default": 200,
+              "description": "SetVehicleTailLight deadline [ms].",
+              "exclusiveMinimum": 0
+            },
+            "spec_deadline_ms": {
+              "type": "integer",
+              "default": 3000,
+              "description": "GetVehicleSpec deadline [ms].",
+              "exclusiveMinimum": 0
+            },
+            "keepalive_time_ms": {
+              "type": "integer",
+              "default": 0,
+              "description": "gRPC keepalive period [ms]; 0 disables it (MORAI's ping policy is not yet known).",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "forward_control_to_sim": {
+          "type": "boolean",
+          "default": true,
+          "description": "If false, control, gear and control-mode requests are not sent to MORAI (manual driving with the simulator keyboard). Runtime-changeable."
+        },
+        "steer_cmd_sign": {
+          "type": "number",
+          "default": 1.0,
+          "description": "Sign applied to the steering command. Deliberately NOT symmetric with the hard-coded -1 on the report side. Runtime-changeable."
+        },
+        "steer_comp_enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Divide the steering command by the speed-dependent MORAI steering-deficit gain. Runtime-changeable."
+        },
+        "steer_comp_speeds_mps": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "default": [
+            2.0,
+            5.0,
+            8.0,
+            11.0
+          ],
+          "description": "Compensation table speeds [m/s], strictly increasing. Runtime-changeable."
+        },
+        "steer_comp_gains": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "default": [
+            0.87,
+            0.855,
+            0.807,
+            0.796
+          ],
+          "description": "Compensation table gains (0.5-1.5, same length as speeds). Runtime-changeable."
+        },
+        "long_cmd_mode": {
+          "type": "string",
+          "default": "acceleration",
+          "description": "Longitudinal command mode. Runtime-changeable.",
+          "enum": [
+            "acceleration",
+            "throttle",
+            "velocity"
+          ]
+        },
+        "send_pedal_with_accel": {
+          "type": "boolean",
+          "default": false,
+          "description": "In acceleration mode also fill throttle/brake pedals. Runtime-changeable."
+        },
+        "pedal_accel_max": {
+          "type": "number",
+          "default": 3.0,
+          "description": "throttle = clip(a / pedal_accel_max, 0, 1) [m/s^2]. Runtime-changeable."
+        },
+        "pedal_brake_max": {
+          "type": "number",
+          "default": 4.5,
+          "description": "brake = clip(-a / pedal_brake_max, 0, 1) [m/s^2]. Runtime-changeable."
+        },
+        "velocity_cmd_unit": {
+          "type": "string",
+          "default": "kph",
+          "description": "Unit of VehicleCtrlCmd.velocity (Autoware m/s x 3.6 | x 1 | 0). Read once.",
+          "enum": [
+            "kph",
+            "mps",
+            "off"
+          ]
+        },
+        "cmd_stale_timeout_s": {
+          "type": "number",
+          "default": 0.2,
+          "description": "A control_cmd older than this is replaced by a braking command that keeps the last steer [s]. Read once.",
+          "exclusiveMinimum": 0.0
+        },
+        "cmd_stale_accel": {
+          "type": "number",
+          "default": -2.4,
+          "description": "Acceleration of the stale braking command [m/s^2]; must be negative. Read once.",
+          "exclusiveMaximum": 0.0
+        },
+        "command_trigger": {
+          "type": "string",
+          "default": "update",
+          "description": "What triggers ControlVehicle (added 26.09.25 for an A/B against main.py). update = exactly one per accepted MORAI update, from the engine loop (default). timer = a dedicated command thread sends the latest command at cmd_resend_hz with absolute deadlines and no catch-up bursts (main.py _CmdResender); the engine loop then does not send. Same command building, stale brake, NaN, forwarding and duplicate-writer rules in both. Runtime-changeable.",
+          "enum": [
+            "update",
+            "timer"
+          ]
+        },
+        "cmd_resend_hz": {
+          "type": "number",
+          "default": 100.0,
+          "description": "ControlVehicle rate when command_trigger is timer [Hz] (main.py name and default). Unused with update. Integers are accepted. Runtime-changeable.",
+          "minimum": 10.0,
+          "maximum": 400.0
+        },
+        "gear_resync_s": {
+          "type": "number",
+          "default": 1.0,
+          "description": "Resend the target gear if MORAI's gear differs, at most this often [s]. Read once.",
+          "minimum": 0.0
+        },
+        "gear_retry_s": {
+          "type": "number",
+          "default": 0.2,
+          "description": "Retry period after a failed gear send [s]. Read once.",
+          "minimum": 0.0
+        },
+        "ego_mode": {
+          "type": "string",
+          "default": "gt",
+          "enum": ["gt", "follow", "localize"],
+          "description": "gt = the MORAI Ego is the Autoware vehicle; follow = pseudo-VILS, stream the real-car localization (follow.input_topic) to the MORAI Ego with SetTransform and send no commands, teleports, TF, vehicle status or control_mode_request (Ego status goes to /morai/ego/*); localize = VILS with a vehicle-PC ghost, publish the MORAI Ego as localization only (kinematic_state, map->base_link TF, localization init) and write nothing to MORAI (no commands, gear, mode, teleport, lamps or control_mode_request; Ego status goes to /morai/ego/*). Read once."
+        },
+        "localize": {
+          "type": "object",
+          "properties": {
+            "twist_source": {"type": "string", "default": "vehicle", "enum": ["vehicle", "morai"], "description": "ego_mode localize only. vehicle = fill the kinematic_state twist with the real-car wheel speed (/vehicle/status/velocity_status) and the pose heading rate; morai = keep the MORAI Ego values (only when the vehicle PC gives the ghost a speed). Read once."},
+            "velocity_max_age_s": {"type": "number", "default": 0.2, "exclusiveMinimum": 0.0, "description": "Use the pose-derived speed (diagnostic WARN) when the real-car speed is older than this [s]. Read once."},
+            "window_s": {"type": "number", "default": 0.2, "exclusiveMinimum": 0.0, "description": "Window for the pose-derived speed and heading rate [s]. Read once."}
+          }
+        },
+        "follow": {
+          "type": "object",
+          "properties": {
+            "rate_hz": {"type": "number", "default": 20.0, "exclusiveMinimum": 0.0, "description": "SetTransform rate [Hz]. Read once."},
+            "max_pose_age_s": {"type": "number", "default": 0.3, "description": "Do not send poses older than this [s]. Read once."},
+            "lead_s": {"type": "number", "default": 0.0, "description": "Extrapolate the pose this far ahead to cover RPC latency [s]. Read once."},
+            "z_source": {"type": "string", "default": "morai_current", "enum": ["morai_current", "map", "fixed"], "description": "Ego z sent to MORAI. Read once."},
+            "fixed_z": {"type": "number", "default": 0.0, "description": "[m] Read once."},
+            "fail_timeout_s": {"type": "number", "default": 0.5, "description": "Diagnostic ERROR when no SetTransform succeeded for this long [s]. Read once."},
+            "input_topic": {"type": "string", "default": "/localization/kinematic_state", "description": "Real-car localization (nav_msgs/Odometry, map). Read once."},
+            "ghost": {"type": "boolean", "default": true, "description": "Send ControlVehicle(GHOST, real-car speed km/h) before each SetTransform and set the Ego control mode to AUTO on connect. Read once."},
+            "daq_brake_full_bar": {"type": "number", "default": 100.0, "description": "Brake pressure [bar] that maps to DAQ brake 1.0 (real car, follow mode). Read once."}
+          }
+        },
+        "publish_ground_truth": {
+          "type": "boolean",
+          "default": true,
+          "description": "Publish /localization/kinematic_state, map->base_link TF and TrackedObjects, and initialise localization (GT mode). Read once."
+        },
+        "steer_report_hold": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hold the last steering report when MORAI reports an idle-record 0. Runtime-changeable."
+        },
+        "steer_report_ignore_foreign": {
+          "type": "boolean",
+          "default": false,
+          "description": "Replace the steering report with the last value we sent on frames whose applied steering was not sent by this node. Runtime-changeable."
+        },
+        "steer_input_norm_deg": {
+          "type": "number",
+          "default": 40.0,
+          "description": "Steering angle [deg] that MORAI front_wheel_angle 1.0 stands for (used to tell our values from foreign ones). Runtime-changeable."
+        },
+        "map_origin_offset_x": {
+          "type": "number",
+          "default": 0.0,
+          "description": "map = R(yaw) * morai + offset [m]. Runtime-changeable."
+        },
+        "map_origin_offset_y": {
+          "type": "number",
+          "default": 0.0,
+          "description": "[m]. Runtime-changeable."
+        },
+        "map_origin_offset_z": {
+          "type": "number",
+          "default": 0.0,
+          "description": "[m]. Runtime-changeable."
+        },
+        "map_origin_yaw_offset_deg": {
+          "type": "number",
+          "default": 0.0,
+          "description": "[deg]. Runtime-changeable."
+        },
+        "teleport_on_initialpose": {
+          "type": "boolean",
+          "default": true,
+          "description": "Move the MORAI ego to /initialpose (RViz 2D Pose Estimate). Runtime-changeable."
+        },
+        "time_source": {
+          "type": "string",
+          "default": "morai",
+          "description": "Stamp source: MORAI sample time (ActorStates.timestamp) or local receive time. Read once.",
+          "enum": [
+            "morai",
+            "receive"
+          ]
+        },
+        "publish_clock": {
+          "type": "boolean",
+          "default": false,
+          "description": "Publish /clock with the message stamp (the MORAI sample time with time_source morai; receive time otherwise or when the MORAI timestamp is unusable) every update. Read once."
+        },
+        "max_sample_age_s": {
+          "type": "number",
+          "default": 0.1,
+          "description": "Diagnostic ERROR when no new valid sample for this long [s]. Read once.",
+          "exclusiveMinimum": 0.0
+        },
+        "actor_hold_s": {
+          "type": "number",
+          "default": 0.5,
+          "description": "Reserved, currently no effect: actors come from the same GetAllActorsState as the ego, so they cannot go stale separately (no new sample = no TrackedObjects). Read once.",
+          "exclusiveMinimum": 0.0
+        },
+        "clock_offset_warn_ms": {
+          "type": "number",
+          "default": 20.0,
+          "description": "Diagnostic WARN when |median(MORAI timestamp - receive time)| exceeds this [ms]. Read once.",
+          "exclusiveMinimum": 0.0
+        },
+        "fallback_hz": {
+          "type": "number",
+          "default": 100.0,
+          "description": "Poll+send rate when WaitForTick cannot be used [Hz]. Read once.",
+          "exclusiveMinimum": 0.0
+        },
+        "auto_reassert_auto": {
+          "type": "boolean",
+          "default": true,
+          "description": "After a reconnect, set MORAI back to AUTO if it reports KEYBOARD and AUTO was last requested. Read once."
+        },
+        "engage_on_start": {
+          "type": "boolean",
+          "default": false,
+          "description": "Set MORAI to AUTO on the first connection. Read once."
+        },
+        "sensor_model": {
+          "type": "string",
+          "default": "",
+          "description": "If set, mount that sensor kit's sensors on the MORAI ego once. Empty = do not touch sensors (GT mode). Read once."
+        },
+        "duplicate_writer_guard": {
+          "type": "boolean",
+          "default": true,
+          "description": "Block ControlVehicle (after a ~0.3 s brake if it was sending) while another publisher of /vehicle/status/velocity_status exists; self is excluded by publisher GID. false = detect and report only. Read once."
+        },
+        "publish_daq": {
+          "type": "boolean",
+          "default": false,
+          "description": "Publish the ViLS DAQ topics <daq.topic_prefix>/{ego_status,object_status} (morai_ros2_msgs EgoVehicleStatus, ObjectStatusList) and <daq.topic_prefix>/vehicle_cmd (Autoware Control) from the same MORAI snapshot the node already reads (replaces daq_publisher.py). Read once."
+        },
+        "daq": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "default": "gated",
+              "enum": ["gated", "always"],
+              "description": "gated = publish only while <daq.topic_prefix>/run_state (latched std_msgs/String 'active <run>' / 'idle <run>', sent by cue_server around each bag) is active; always = publish continuously. Runtime."
+            },
+            "rate_hz": {
+              "type": "number",
+              "default": 100.0,
+              "minimum": 10.0,
+              "maximum": 400.0,
+              "description": "DAQ publish rate [Hz] (spec 100 Hz; a zero-order hold of the ~50 Hz MORAI updates). Read once."
+            },
+            "max_sample_age_s": {
+              "type": "number",
+              "default": 0.1,
+              "description": "Stop the state topics and count gap ticks while the latest MORAI sample is at least this old [s]. Read once."
+            },
+            "cmd_stale_s": {
+              "type": "number",
+              "default": 0.2,
+              "description": "Stop /daq/vehicle_cmd when no new control_cmd arrived for this long [s]; zeros are never invented. Read once."
+            },
+            "accel_scale": {
+              "type": "number",
+              "default": 1.0,
+              "description": "Scale applied to MORAI acceleration (daq_publisher --accel-scale). Read once."
+            },
+            "publish_objects": {
+              "type": "boolean",
+              "default": true,
+              "description": "Publish /daq/object_status. Read once."
+            },
+            "publish_collision": {
+              "type": "boolean",
+              "default": true,
+              "description": "Publish /daq/collision (morai_ros2_msgs/CollisionData from gRPC Ego vehicle_state.collision_objects). Read once."
+            },
+            "stamp": {
+              "type": "string",
+              "default": "sample",
+              "enum": ["sample", "tick"],
+              "description": "sample = MORAI sample time (repeated rows share a stamp) and the original control_cmd stamp; tick = publish time (daq_publisher behaviour). Offline tools use the bag receive time either way. Read once."
+            },
+            "run_timeout_s": {
+              "type": "number",
+              "default": 1200.0,
+              "minimum": 0.0,
+              "description": "End a run automatically after this long without 'idle' (cue_server died) [s]; 0 = never. Read once."
+            },
+            "topic_prefix": {
+              "type": "string",
+              "default": "/daq",
+              "description": "Topic prefix; must match daq/spec.py. Read once."
+            },
+            "raw": {
+              "type": "boolean",
+              "default": false,
+              "description": "Raw gRPC recording (added 26.09.26). Also publish <daq.topic_prefix>/raw/actor_states (one std_msgs/String per accepted MORAI update: the complete GetAllActorsState response as proto3 JSON, schema morai_raw.actor_states/1) and <daq.topic_prefix>/raw/vehicle_ctrl_cmd (one per ControlVehicle call: the VehicleCtrlCmd exactly as sent plus stale/ok/grpc_code/rpc_ms/result_status, schema morai_raw.vehicle_ctrl_cmd/1). Values are not converted. Same gate as the other DAQ topics; JSON is built on the DAQ thread. Requires publish_daq. Read once."
+            },
+            "raw_queue_depth": {
+              "type": "integer",
+              "default": 256,
+              "minimum": 1,
+              "maximum": 100000,
+              "description": "Depth of each raw queue from the engine/command threads to the DAQ thread (added 26.09.26). On overflow the oldest item is dropped and counted (raw_dropped / tx_dropped in the run summary). Read once."
+            }
+          },
+          "additionalProperties": false
+        },
+        "disturbance": {
+          "type": "object",
+          "properties": {
+            "enable": {
+              "type": "boolean",
+              "default": false,
+              "description": "Disturbance injection (added 26.11.10, MRDIST-1). true = create the service ~/set_disturbance (morai_ros2_msgs/srv/SetDisturbance: position offset/noise, probabilistic dropout, blackout on the ground-truth objects sent to Autoware) and, with publish_daq in ego_mode gt, publish <daq.topic_prefix>/disturbance (one morai_ros2_msgs/DisturbanceStatus per object frame, about 10 Hz) and <daq.topic_prefix>/object_status_disturbed (needs daq.publish_objects) under the same gate as the other DAQ topics. The ground-truth DAQ topics are not changed. In ego_mode follow/localize the service exists but every ON command is rejected with REAL_CAR. false = node behaves exactly as before. Read once."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "/**": {
+      "type": "object",
+      "properties": {
+        "ros__parameters": {
+          "$ref": "#/definitions/morai_interface"
+        }
+      },
+      "required": [
+        "ros__parameters"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "/**"
+  ],
+  "additionalProperties": false
+}

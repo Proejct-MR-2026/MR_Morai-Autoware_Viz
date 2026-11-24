@@ -1,0 +1,27 @@
+# 신규 — 26.10.10 _ YSH _ 의사 VILS: morai_interface.gt.param.yaml 위에 덧씌운다 (launch overlay_param_file)
+#   실차(katech_ioniq CAN) 가 Autoware 차량이고, 실차 측위(katech_vils_gnss_pose → /localization/kinematic_state)를
+#   MORAI Ego 에 SetTransform 으로 옮긴다. 브리지는 MORAI 객체(TrackedObjects)·DAQ 를 내고, 명령·텔레포트·TF·
+#   /vehicle/status/*·control_mode_request 는 내지 않는다 (Ego 상태는 /morai/ego/*).
+#   방식(physics·속도 힌트)과 주기는 실제 MORAI 벤치(follow_probe.py) 결과로 정한다.
+#   "## VILS" = 벤치·시험장에서 바꿔 보며 맞추는 값 (katech-vils-ws/docs/pseudo_vils_manual.md 조정표)
+/**:
+  ros__parameters:
+    ego_mode: "follow"
+    follow:
+      rate_hz: 20.0                     # ## VILS  SetTransform 주기 (벤치 결과로 10~50)
+      max_pose_age_s: 0.3               # ## VILS  이보다 오래된 측위는 보내지 않는다
+      lead_s: 0.0                       # ## VILS  벤치에서 잰 RPC p50 편도 지연만큼 (예 0.03)
+      z_source: "morai_current"         # ## VILS  morai_current | map | fixed. 물리 켜짐이면 MORAI 지면 z 를 쓴다
+      fixed_z: 0.0
+      fail_timeout_s: 0.5               # ## VILS  성공 없이 이만큼 지나면 follow 진단 ERROR (→ MRM)
+      input_topic: "/localization/kinematic_state"
+      # 26.10.12 _ YSH _ 의사 VILS 2단계: 고스트 (10-12 실 MORAI 벤치 방식 c — 물리 없이 SetTransform 을 정확히 따른다)
+      ghost: true                       # ## VILS  매 틱 ControlVehicle(GHOST, 실차 km/h) + SetTransform, 연결 때 AUTO
+      # 26.10.12 _ YSH _ DAQ Ego 는 실차 값 (/vehicle/status/*, kcan_imu, actuation_status) — brake 0~1 정규화 기준
+      daq_brake_full_bar: 100.0         # ## VILS  K-CAN 브레이크 압력 factor(0.1/1) 실측 뒤 맞춘다
+    # 26.10.13 _ YSH _ 의사 VILS: cue 런에 사람 대기(시작점 ≤600 s + engage ≤600 s)가 들어가 GT 의 1200 s 로는
+    #   주행 도중 DAQ 가 스스로 닫힐 수 있다. 이 값은 cue_server 가 죽었을 때의 안전망일 뿐이다
+    daq:
+      run_timeout_s: 2700.0
+    morai:
+      transform_deadline_ms: 100        # ## VILS  LAN 왕복이 길면 늘린다. 늦은 SetTransform 은 버리고 다음 틱에 최신 위치 (GT 는 1000)

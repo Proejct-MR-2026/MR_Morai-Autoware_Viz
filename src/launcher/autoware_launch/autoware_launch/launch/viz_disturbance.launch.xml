@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 신규 — 26.11.13 _ YSH _ 13_ 외란 시각화 전용. e2e_simulator 에서 RViz 계열만 띄운다.
+     e2e_simulator → autoware.launch.xml 과 같은 파일·같은 인자로: 전역 파라미터 · 차량 모델(robot_state_publisher) ·
+     [지도 (map_path 를 줄 때만)] · rviz2 (스플래시·qt5ct 테마 같음). 나머지(측위·인지·계획·제어·API·시스템·브리지)는 띄우지 않는다.
+     브리지는 13_ scripts/run_viz.sh 가 따로 띄운다. RViz 설정은 autoware.rviz + 디버그 그룹 하나 (autoware_disturbance.rviz,
+     13_ scripts/make_rviz.py 로 만든다).
+     26.11.13 _ YSH _ 13_ 은 시각화용 패키지만 빌드한다 (viz_build.sh viz). autoware_launch 는 colcon 이 주행 스택 240개를
+     요구해 빌드하지 않으므로, 이 파일은 경로로 띄우고 ($(dirname)) 같은 폴더의 rviz·config 를 바로 읽는다.
+     파일 내용은 e2e 가 쓰는 것과 같다. 원문의 find-pkg-share autoware_launch 줄은 각 자리 주석에 남겼다. -->
+<launch>
+  <!-- 26.11.13 _ YSH _ 이 파일의 폴더. include 인자 안의 $(dirname) 은 포함되는 파일 기준으로 풀려 여기서 한 번 잡아 둔다 -->
+  <let name="viz_launch_dir" value="$(dirname)"/>
+  <arg name="map_path" default="" description="lanelet2 지도 폴더. 비우면 지도 없이 (나중에 bag 다시 보기 때 지도를 얹을 수 있다)"/>
+  <arg name="vehicle_model" default="morai_vehicle" description="vehicle model name (e2e_simulator 와 같음)"/>
+  <arg name="sensor_model" default="morai_sensor_kit" description="sensor model name (e2e_simulator 와 같음)"/>
+  <arg name="use_sim_time" default="false" description="bag 다시 보기면 true"/>
+  <arg name="lanelet2_map_file" default="lanelet2_map.osm" description="lanelet2 map file name"/>
+  <arg name="pointcloud_map_file" default="pointcloud_map.pcd" description="pointcloud map file name"/>
+  <arg name="use_pointcloud_map" default="false" description="PCD 는 쓰지 않는다 (e2e_simulator 의 morai 기본과 같음)"/>
+  <arg name="rviz" default="true" description="launch rviz"/>
+  <arg name="rviz_config_name" default="autoware_disturbance.rviz" description="rviz config name"/>
+  <!-- 원문: <arg name="rviz_config" default="$(find-pkg-share autoware_launch)/rviz/$(var rviz_config_name)" description="rviz config path"/> -->
+  <arg name="rviz_config" default="$(var viz_launch_dir)/../rviz/$(var rviz_config_name)" description="rviz config path"/>
+  <arg name="rviz_respawn" default="true"/>
+
+  <!-- Global parameters (autoware.launch.xml 과 같음) -->
+  <group scoped="false">
+    <include file="$(find-pkg-share autoware_global_parameter_loader)/launch/global_params.launch.py">
+      <arg name="use_sim_time" value="$(var use_sim_time)"/>
+      <arg name="vehicle_model" value="$(var vehicle_model)"/>
+    </include>
+  </group>
+
+  <!-- Vehicle: 차량 모델만 (VehicleModel 표시용 /robot_description). 차량 인터페이스는 띄우지 않는다 -->
+  <group>
+    <include file="$(find-pkg-share tier4_vehicle_launch)/launch/vehicle.launch.xml">
+      <arg name="use_sim_time" value="$(var use_sim_time)"/>
+      <arg name="vehicle_model" value="$(var vehicle_model)"/>
+      <arg name="sensor_model" value="$(var sensor_model)"/>
+      <arg name="launch_vehicle_interface" value="false"/>
+      <arg name="config_dir" value="$(find-pkg-share $(var sensor_model)_description)/config"/>
+    </include>
+  </group>
+
+  <!-- Map: map_path 를 줄 때만. viewer 프레임은 map_tf_generator 가 낸다.
+       components/tier4_map_component.launch.xml 과 같은 인자로 tier4_map_launch 를 바로 부른다 (그 파일은 find-pkg-share autoware_launch 를 쓴다). 원문:
+    <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_map_component.launch.xml">
+      <arg name="use_pointcloud_map" value="$(var use_pointcloud_map)"/>
+    </include> -->
+  <group if="$(eval &quot;'$(var map_path)' != ''&quot;)">
+    <include file="$(find-pkg-share tier4_map_launch)/launch/map.launch.xml">
+      <arg name="pointcloud_map_path" value="$(var map_path)/$(var pointcloud_map_file)"/>
+      <arg name="pointcloud_map_metadata_path" value="$(var map_path)/pointcloud_map_metadata.yaml"/>
+      <arg name="lanelet2_map_path" value="$(var map_path)/$(var lanelet2_map_file)"/>
+      <arg name="map_projector_info_path" value="$(var map_path)/map_projector_info.yaml"/>
+      <arg name="use_pointcloud_map" value="$(var use_pointcloud_map)"/>
+      <arg name="pointcloud_map_loader_param_path" value="$(var viz_launch_dir)/../config/map/pointcloud_map_loader.param.yaml"/>
+      <arg name="lanelet2_map_loader_param_path" value="$(var viz_launch_dir)/../config/map/lanelet2_map_loader.param.yaml"/>
+      <arg name="map_tf_generator_param_path" value="$(var viz_launch_dir)/../config/map/map_tf_generator.param.yaml"/>
+      <arg name="map_projection_loader_param_path" value="$(var viz_launch_dir)/../config/map/map_projection_loader.param.yaml"/>
+    </include>
+  </group>
+
+  <!-- Tools (autoware.launch.xml 과 같음). 원문 args: -d $(var rviz_config) -s $(find-pkg-share autoware_launch)/rviz/image/autoware.png -->
+  <group>
+    <node
+      pkg="rviz2"
+      exec="rviz2"
+      name="rviz2"
+      output="screen"
+      args="-d $(var rviz_config) -s $(var viz_launch_dir)/../rviz/image/autoware.png"
+      if="$(var rviz)"
+      respawn="$(var rviz_respawn)"
+    >
+      <env name="QT_QPA_PLATFORMTHEME" value="qt5ct"/>
+    </node>
+  </group>
+</launch>
